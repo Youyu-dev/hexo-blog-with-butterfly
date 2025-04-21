@@ -1,0 +1,21 @@
+{
+    // 字体设置
+    "editor.fontFamily": "JetBrainsMono,Consolas, 'Courier New', monospace",
+    "editor.fontLigatures": true, // 启用连字效果
+    "editor.fontSize": 17,
+    "editor.lineHeight": 24,
+    // 核心编辑器设置
+    "editor.tabSize": 2,
+    "editor.formatOnSave": false,
+    "editor.smoothScrolling": true,
+    "editor.minimap.enabled": true, // 禁用缩略图
+    // 文件管理
+    "files.autoSave": "afterDelay",
+    "explorer.confirmDelete": false,
+    // 终端配置
+    "terminal.integrated.fontSize": 13,
+    "terminal.integrated.defaultProfile.windows": "Git Bash",
+    // 高级调试
+    "debug.console.closeOnEnd": true,
+    "typescript.tsserver.experimental.enableProjectDiagnostics": true
+}
