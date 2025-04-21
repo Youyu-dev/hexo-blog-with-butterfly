@@ -1,48 +1,66 @@
 name: Deploy to Vercel
 
 on:
-  workflow_dispatch:
   push:
     branches: [main]
+  workflow_dispatch:
 
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
 
     steps:
+      # ---- 1. 拉取代码 + 私有子模块 ----
       - name: Checkout Main Repo + Submodules
         uses: actions/checkout@v4
         with:
-          submodules: 'recursive'
-          ssh-key: ${{ secrets.SSH_PRIVATE_KEY }}
+          submodules: 'recursive'  # 递归拉取子模块
+          ssh-key: ${{ secrets.SSH_PRIVATE_KEY }}  # 使用SSH密钥访问私有子模块
 
+      # ---- 2. 配置SSH密钥 ----
       - name: Configure SSH
         run: |
           mkdir -p ~/.ssh
-          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_ed25519
+          # 修复密钥格式（处理换行符）
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" | sed 's/\\n/\n/g' > ~/.ssh/id_ed25519
+          chmod 700 ~/.ssh
           chmod 600 ~/.ssh/id_ed25519
-          ssh-keyscan github.com >> ~/.ssh/known_hosts
+          # 添加GitHub到已知主机
+          ssh-keyscan -t ed25519 github.com >> ~/.ssh/known_hosts
 
+      # ---- 3. 设置Node.js环境 ----
       - name: Use Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
+          cache: 'npm'  # 启用npm缓存加速
 
+      # ---- 4. 安装依赖 ----
       - name: Install Dependencies
         run: |
-          npm install -g hexo-cli
-          npm install
+          npm install -g hexo-cli  # 全局安装hexo-cli
+          npm ci --omit=dev  # 安装生产依赖，提升速度
 
+      # ---- 5. 清理并生成静态文件 ----
       - name: Build Hexo
         run: |
           hexo clean
           hexo generate
+          # 确保生成至少一个文件
+          [ -f ./public/index.html ] || (echo "Error: No files generated!" && exit 1)
 
-      - name: Upload to Vercel
-        uses: amondnet/vercel-action@v25.2.0  # 使用指定版本
+      # ---- 6. 验证构建产物 ----
+      - name: Validate Public Directory
+        run: |
+          echo "Generated files:"
+          ls -lh ./public
+          [ -f ./public/index.html ] || exit 1
+
+      # ---- 7. 部署到Vercel（官方稳定方案） ----
+      - name: Deploy to Vercel
+        uses: vercel/actions@v1  # 使用官方维护的Action
         with:
-          vercel-token: ${{ secrets.VERCEL_TOKEN }}
-          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
-          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
-          working-directory: ./public
-          vercel-args: '--prod'
+          token: ${{ secrets.VERCEL_TOKEN }}
+          project-id: ${{ secrets.VERCEL_PROJECT_ID }}
+          directory: ./public  # 指定Hexo生成的静态目录
+          force: true  # 强制覆盖旧部署
