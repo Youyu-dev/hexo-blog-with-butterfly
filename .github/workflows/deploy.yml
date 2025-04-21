@@ -42,6 +42,7 @@ jobs:
         uses: amondnet/vercel-action@v25.2.0  # 使用指定版本
         with:
           vercel-token: ${{ secrets.VERCEL_TOKEN }}
+          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
           vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
           working-directory: ./public
           vercel-args: '--prod'
