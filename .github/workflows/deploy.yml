@@ -38,7 +38,7 @@ jobs:
           hexo generate
 
       - name: Upload to Vercel
-        uses: amondnet/vercel-action@v4  # 修正版本号
+        uses: amondnet/vercel-action@v25.2.0  # 使用指定版本
         with:
           vercel-token: ${{ secrets.VERCEL_TOKEN }}
           vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
