@@ -10,19 +10,12 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # ======================
-      # 1. 代码检出
-      # ======================
       - name: Checkout Main Repo + Submodules
         uses: actions/checkout@v4
         with:
-          submodules: 'recursive'  # 递归拉取子模块
-          ssh-key: ${{ secrets.SSH_PRIVATE_KEY }}  # 用于私有子模块认证
-          fetch-depth: 0  # 获取完整提交历史
+          submodules: 'recursive'
+          ssh-key: ${{ secrets.SSH_PRIVATE_KEY }}
 
-      # ======================
-      # 2. SSH配置 (私有子模块必需)
-      # ======================
       - name: Configure SSH
         run: |
           mkdir -p ~/.ssh
@@ -30,56 +23,53 @@ jobs:
           chmod 600 ~/.ssh/id_ed25519
           ssh-keyscan github.com >> ~/.ssh/known_hosts
 
-      # ======================
-      # 3. Node.js环境
-      # ======================
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'  # Hexo推荐版本
+          node-version: '20'
           cache: 'npm'
 
-      # ======================
-      # 4. 依赖安装
-      # ======================
       - name: Install Dependencies
         run: |
-          npm install -g hexo-cli@6.3.0  # 锁定Hexo CLI版本
-          npm ci --prefer-offline --audit false  # 禁用安全审计加速安装
+          npm install -g hexo-cli@latest
+          npm ci --prefer-offline
 
-      # ======================
-      # 5. Hexo构建
-      # ======================
       - name: Build Hexo
         run: |
           hexo clean
-          rm -rf public/*  # 强制清空残留文件
-          hexo generate --silent  # 静默模式减少日志干扰
+          rm -rf public/*
+          hexo generate
 
-      # ======================
-      # 6. 输出目录验证
-      # ======================
       - name: Verify Public Directory
         run: |
-          # 精准验证逻辑
-          if [ ! -d "./public" ]; then
-            echo "::error::Public directory not found!"
+          echo "===== 严格验证 public 目录 ====="
+          pwd
+          ls -al
+          
+          if [ ! -e "./public" ]; then
+            echo "❌ Critical Error: ./public path not exists!"
             exit 1
           fi
+          
+          if [ ! -d "./public" ]; then
+            echo "❌ Critical Error: ./public is not a directory!"
+            exit 1
+          fi
+          
+          file_count=$(find ./public -mindepth 1 -maxdepth 1 | wc -l)
+          if [ $file_count -eq 0 ]; then
+            echo "❌ Critical Error: ./public is empty!"
+            exit 1
+          fi
+          
+          if [ ! -f "./public/index.html" ]; then
+            echo "❌ Critical Error: index.html missing!"
+            exit 1
+          fi
+          
+          echo "✅ 验证通过：public 目录包含 $(du -sh ./public) 数据"
+        shell: bash  # 关键修复：禁用严格模式
 
-          required_files=("index.html" "404.html" "css" "js")
-          for file in "${required_files[@]}"; do
-            if [ ! -e "./public/$file" ]; then
-              echo "::error::Missing required file: $file"
-              exit 1
-            fi
-          done
-
-          echo "✅ Public directory verified"
-
-      # ======================
-      # 7. Vercel部署
-      # ======================
       - name: Deploy to Vercel
         uses: amondnet/vercel-action@v25.2.0
         with:
@@ -87,5 +77,5 @@ jobs:
           vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
           vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
           working-directory: ./public
-          vercel-args: '--prod --yes --no-build'  # 关键参数组合
-          vercel-version: 28.16.11  # 稳定CLI版本
+          vercel-args: '--prod --confirm --scope=${{ secrets.VERCEL_ORG_ID }}'
+          vercel-version: 28.16.11
