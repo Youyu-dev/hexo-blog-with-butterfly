@@ -16,12 +16,14 @@ jobs:
           submodules: 'recursive'
           ssh-key: ${{ secrets.SSH_PRIVATE_KEY }}
 
-      - name: Configure SSH
-        run: |
-          mkdir -p ~/.ssh
-          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_ed25519
-          chmod 600 ~/.ssh/id_ed25519
-          ssh-keyscan github.com >> ~/.ssh/known_hosts
+      - name: Initialize Submodules
+        run: git submodule update --init --recursive
+
+      - name: Check source directory
+        run: ls -la ./source
+
+      - name: Check hexo config
+        run: cat ./_config.yml | grep output_dir
 
       - name: Use Node.js
         uses: actions/setup-node@v4
@@ -38,11 +40,13 @@ jobs:
           hexo clean
           hexo generate
 
+      - name: Check public directory
+        run: ls -la ./public
+
       - name: Upload to Vercel
-        uses: amondnet/vercel-action@v25.2.0  # 使用指定版本
+        uses: amondnet/vercel-action@v25.2.0 
         with:
           vercel-token: ${{ secrets.VERCEL_TOKEN }}
           vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
           vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
           working-directory: ./public
-          force: true  # 强制覆盖旧部署
