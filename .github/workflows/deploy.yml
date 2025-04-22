@@ -23,7 +23,7 @@ jobs:
         run: ls -la ./source
 
       - name: Check hexo config
-        run: cat ./_config.yml | grep output_dir
+        run: cat ./_config.yml | grep public_dir
 
       - name: Use Node.js
         uses: actions/setup-node@v4
