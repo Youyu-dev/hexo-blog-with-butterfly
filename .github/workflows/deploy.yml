@@ -45,8 +45,12 @@ jobs:
 
       - name: Upload to Vercel
         uses: amondnet/vercel-action@v25.2.0 
-        with:
+        env:
           vercel-token: ${{ secrets.VERCEL_TOKEN }}
           vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
           vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
-          working-directory: ./public
+        with:
+         distDir: public  # 明确指定部署目录
+         region: auto    # 自动选择最优区域
+         nodeVersion: 20   # 与工作流环境一致
+        
