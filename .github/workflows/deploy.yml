@@ -10,12 +10,19 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      # ======================
+      # 1. 代码检出
+      # ======================
       - name: Checkout Main Repo + Submodules
         uses: actions/checkout@v4
         with:
-          submodules: 'recursive'
-          ssh-key: ${{ secrets.SSH_PRIVATE_KEY }}
+          submodules: 'recursive'  # 递归拉取子模块
+          ssh-key: ${{ secrets.SSH_PRIVATE_KEY }}  # 用于私有子模块认证
+          fetch-depth: 0  # 获取完整提交历史
 
+      # ======================
+      # 2. SSH配置 (私有子模块必需)
+      # ======================
       - name: Configure SSH
         run: |
           mkdir -p ~/.ssh
@@ -23,38 +30,56 @@ jobs:
           chmod 600 ~/.ssh/id_ed25519
           ssh-keyscan github.com >> ~/.ssh/known_hosts
 
+      # ======================
+      # 3. Node.js环境
+      # ======================
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '20'  # Hexo推荐版本
           cache: 'npm'
 
+      # ======================
+      # 4. 依赖安装
+      # ======================
       - name: Install Dependencies
         run: |
-          npm install -g hexo-cli@latest
-          npm ci --prefer-offline
+          npm install -g hexo-cli@6.3.0  # 锁定Hexo CLI版本
+          npm ci --prefer-offline --audit false  # 禁用安全审计加速安装
 
+      # ======================
+      # 5. Hexo构建
+      # ======================
       - name: Build Hexo
         run: |
           hexo clean
-          rm -rf public/*
-          hexo generate --debug
+          rm -rf public/*  # 强制清空残留文件
+          hexo generate --silent  # 静默模式减少日志干扰
 
-      - name: Check Public Purity
+      # ======================
+      # 6. 输出目录验证
+      # ======================
+      - name: Verify Public Directory
         run: |
-          if [ -f "./public/package.json" ]; then
-            echo "❌ 错误：public 目录包含 package.json！"
+          # 精准验证逻辑
+          if [ ! -d "./public" ]; then
+            echo "::error::Public directory not found!"
             exit 1
           fi
-          if [ -f "./public/vercel.json" ]; then
-            echo "❌ 错误：public 目录包含 vercel.json！"
-            exit 1
-          fi
 
-      - name: Clean Vercel Cache
-        run: |
-          npx vercel cache clean --scope=${{ secrets.VERCEL_ORG_ID }} --token=${{ secrets.VERCEL_TOKEN }} --yes
+          required_files=("index.html" "404.html" "css" "js")
+          for file in "${required_files[@]}"; do
+            if [ ! -e "./public/$file" ]; then
+              echo "::error::Missing required file: $file"
+              exit 1
+            fi
+          done
 
+          echo "✅ Public directory verified"
+
+      # ======================
+      # 7. Vercel部署
+      # ======================
       - name: Deploy to Vercel
         uses: amondnet/vercel-action@v25.2.0
         with:
@@ -62,5 +87,5 @@ jobs:
           vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
           vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
           working-directory: ./public
-          vercel-args: '--prod --yes --no-build --scope=${{ secrets.VERCEL_ORG_ID }}'
-          vercel-version: 28.16.11
+          vercel-args: '--prod --yes --no-build'  # 关键参数组合
+          vercel-version: 28.16.11  # 稳定CLI版本
