@@ -42,9 +42,33 @@ jobs:
 
       - name: Verify Public Directory
         run: |
-          ls -al ./public
-          [ -z "$(ls -A ./public)" ] && exit 1
-          [ ! -f "./public/index.html" ] && exit 1
+          echo "===== 严格验证 public 目录 ====="
+          pwd
+          ls -al
+          
+          if [ ! -e "./public" ]; then
+            echo "❌ Critical Error: ./public path not exists!"
+            exit 1
+          fi
+          
+          if [ ! -d "./public" ]; then
+            echo "❌ Critical Error: ./public is not a directory!"
+            exit 1
+          fi
+          
+          file_count=$(find ./public -mindepth 1 -maxdepth 1 | wc -l)
+          if [ $file_count -eq 0 ]; then
+            echo "❌ Critical Error: ./public is empty!"
+            exit 1
+          fi
+          
+          if [ ! -f "./public/index.html" ]; then
+            echo "❌ Critical Error: index.html missing!"
+            exit 1
+          fi
+          
+          echo "✅ 验证通过：public 目录包含 $(du -sh ./public) 数据"
+        shell: bash  # 关键修复：禁用严格模式
 
       - name: Deploy to Vercel
         uses: amondnet/vercel-action@v25.2.0
@@ -54,4 +78,4 @@ jobs:
           vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
           working-directory: ./public
           vercel-args: '--prod --confirm --scope=${{ secrets.VERCEL_ORG_ID }}'
-          vercel-version: latest  # 关键参数
+          vercel-version: latest
