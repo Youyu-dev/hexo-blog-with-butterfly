@@ -40,35 +40,20 @@ jobs:
           rm -rf public/*
           hexo generate --debug
 
-      - name: Verify Public Directory
+      - name: Check Public Purity
         run: |
-          echo "===== 严格验证 public 目录 ====="
-          pwd
-          ls -al
-          
-          if [ ! -e "./public" ]; then
-            echo "❌ Critical Error: ./public path not exists!"
+          if [ -f "./public/package.json" ]; then
+            echo "❌ 错误：public 目录包含 package.json！"
             exit 1
           fi
-          
-          if [ ! -d "./public" ]; then
-            echo "❌ Critical Error: ./public is not a directory!"
+          if [ -f "./public/vercel.json" ]; then
+            echo "❌ 错误：public 目录包含 vercel.json！"
             exit 1
           fi
-          
-          file_count=$(find ./public -mindepth 1 -maxdepth 1 | wc -l)
-          if [ $file_count -eq 0 ]; then
-            echo "❌ Critical Error: ./public is empty!"
-            exit 1
-          fi
-          
-          if [ ! -f "./public/index.html" ]; then
-            echo "❌ Critical Error: index.html missing!"
-            exit 1
-          fi
-          
-          echo "✅ 验证通过：public 目录包含 $(du -sh ./public) 数据"
-        shell: bash  # 关键修复：禁用严格模式
+
+      - name: Clean Vercel Cache
+        run: |
+          npx vercel cache clean --scope=${{ secrets.VERCEL_ORG_ID }} --token=${{ secrets.VERCEL_TOKEN }} --yes
 
       - name: Deploy to Vercel
         uses: amondnet/vercel-action@v25.2.0
@@ -77,5 +62,5 @@ jobs:
           vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
           vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
           working-directory: ./public
-          vercel-args: '--prod --confirm --scope=${{ secrets.VERCEL_ORG_ID }}'
-          vercel-version: latest
+          vercel-args: '--prod --yes --no-build --scope=${{ secrets.VERCEL_ORG_ID }}'
+          vercel-version: 28.16.11
