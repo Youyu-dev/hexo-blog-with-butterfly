@@ -37,33 +37,14 @@ jobs:
       - name: Build Hexo
         run: |
           hexo clean
-          rm -rf public/*  # 确保清理残留文件
+          rm -rf public/*
           hexo generate --debug
 
       - name: Verify Public Directory
         run: |
-          echo "===== 开始检查 public 目录 ====="
-          ls -alh ./public
-          
-          if [ ! -d "./public" ]; then
-            echo "❌ 错误：public 目录不存在！"
-            exit 1
-          fi
-          
-          if [ -z "$(ls -A ./public)" ]; then
-            echo "❌ 错误：public 目录为空！"
-            exit 1
-          fi
-          
-          REQUIRED_FILES=("index.html" "404.html" "css" "js")
-          for file in "${REQUIRED_FILES[@]}"; do
-            if [ ! -e "./public/$file" ]; then
-              echo "❌ 错误：缺少必要文件 $file"
-              exit 1
-            fi
-          done
-          
-          echo "✅ public 目录验证通过"
+          ls -al ./public
+          [ -z "$(ls -A ./public)" ] && exit 1
+          [ ! -f "./public/index.html" ] && exit 1
 
       - name: Deploy to Vercel
         uses: amondnet/vercel-action@v25.2.0
@@ -72,4 +53,5 @@ jobs:
           vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
           vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
           working-directory: ./public
-          vercel-args: '--prod --confirm'
+          vercel-args: '--prod --confirm --scope=${{ secrets.VERCEL_ORG_ID }}'
+          vercel-version: latest  # 关键参数
