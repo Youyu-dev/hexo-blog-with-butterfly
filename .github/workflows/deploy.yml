@@ -1,4 +1,4 @@
-name: Deploy to Vercel
+name: Deploy Hexo to Vercel
 
 on:
   workflow_dispatch:
@@ -10,47 +10,54 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      # 步骤1：检出主仓库及子模块（使用SSH密钥）
       - name: Checkout Main Repo + Submodules
         uses: actions/checkout@v4
         with:
-          submodules: 'recursive'
-          ssh-key: ${{ secrets.SSH_PRIVATE_KEY }}
+          submodules: 'recursive'  # 递归拉取子模块
+          ssh-key: ${{ secrets.SSH_PRIVATE_KEY }}  # 用于私有子模块的认证
 
-      - name: Initialize Submodules
-        run: git submodule update --init --recursive
+      # 步骤2：配置SSH环境
+      - name: Configure SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan github.com >> ~/.ssh/known_hosts
 
-      - name: Check source directory
-        run: ls -la ./source
-
-      - name: Check hexo config
-        run: cat ./_config.yml | grep public_dir
-
-      - name: Use Node.js
+      # 步骤3：设置Node.js环境
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
+          cache: 'npm'
 
+      # 步骤4：安装Hexo及其依赖
       - name: Install Dependencies
         run: |
-          npm install -g hexo-cli
-          npm install
+          npm install -g hexo-cli@latest
+          npm ci --prefer-offline  # 使用ci模式确保依赖一致性
 
+      # 步骤5：生成静态文件
       - name: Build Hexo
         run: |
           hexo clean
-          hexo generate
+          hexo generate --debug  # 开启调试模式
 
-      - name: Check public directory
-        run: ls -la ./public
+      # 步骤6：验证生成结果
+      - name: Verify Public Directory
+        run: |
+          ls -al ./public
+          [ -z "$(ls -A ./public)" ] && echo "ERROR: Public directory is empty!" && exit 1
 
-      - name: Upload to Vercel
-        uses: amondnet/vercel-action@v25.2.0 
-        env:
+      # 步骤7：部署到Vercel
+      - name: Deploy to Vercel
+        uses: amondnet/vercel-action@v25.2.0
+        with:
           vercel-token: ${{ secrets.VERCEL_TOKEN }}
           vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
           vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
-        with:
-         distDir: public  # 明确指定部署目录
-         region: auto    # 自动选择最优区域
-         nodeVersion: 20   # 与工作流环境一致
-        
+          working-directory: ./public
+          vercel-args: '--prod --confirm'  # 关键参数配置
+        env:
+          VERCEL_DEBUG: true  # 开启Vercel详细日志
