@@ -10,14 +10,12 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 步骤1：检出主仓库及子模块（使用SSH密钥）
       - name: Checkout Main Repo + Submodules
         uses: actions/checkout@v4
         with:
-          submodules: 'recursive'  # 递归拉取子模块
-          ssh-key: ${{ secrets.SSH_PRIVATE_KEY }}  # 用于私有子模块的认证
+          submodules: 'recursive'
+          ssh-key: ${{ secrets.SSH_PRIVATE_KEY }}
 
-      # 步骤2：配置SSH环境
       - name: Configure SSH
         run: |
           mkdir -p ~/.ssh
@@ -25,32 +23,53 @@ jobs:
           chmod 600 ~/.ssh/id_ed25519
           ssh-keyscan github.com >> ~/.ssh/known_hosts
 
-      # 步骤3：设置Node.js环境
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
           cache: 'npm'
 
-      # 步骤4：安装Hexo及其依赖
       - name: Install Dependencies
         run: |
           npm install -g hexo-cli@latest
-          npm ci --prefer-offline  # 使用ci模式确保依赖一致性
+          npm ci --prefer-offline
 
-      # 步骤5：生成静态文件
       - name: Build Hexo
         run: |
           hexo clean
-          hexo generate --debug  # 开启调试模式
+          rm -rf public/*
+          hexo generate
 
-      # 步骤6：验证生成结果
       - name: Verify Public Directory
         run: |
-          ls -al ./public
-          [ -z "$(ls -A ./public)" ] && echo "ERROR: Public directory is empty!" && exit 1
+          echo "===== 严格验证 public 目录 ====="
+          pwd
+          ls -al
+          
+          if [ ! -e "./public" ]; then
+            echo "❌ Critical Error: ./public path not exists!"
+            exit 1
+          fi
+          
+          if [ ! -d "./public" ]; then
+            echo "❌ Critical Error: ./public is not a directory!"
+            exit 1
+          fi
+          
+          file_count=$(find ./public -mindepth 1 -maxdepth 1 | wc -l)
+          if [ $file_count -eq 0 ]; then
+            echo "❌ Critical Error: ./public is empty!"
+            exit 1
+          fi
+          
+          if [ ! -f "./public/index.html" ]; then
+            echo "❌ Critical Error: index.html missing!"
+            exit 1
+          fi
+          
+          echo "✅ 验证通过：public 目录包含 $(du -sh ./public) 数据"
+        shell: bash  # 关键修复：禁用严格模式
 
-      # 步骤7：部署到Vercel
       - name: Deploy to Vercel
         uses: amondnet/vercel-action@v25.2.0
         with:
@@ -58,6 +77,5 @@ jobs:
           vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
           vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
           working-directory: ./public
-          vercel-args: '--prod --confirm'  # 关键参数配置
-        env:
-          VERCEL_DEBUG: true  # 开启Vercel详细日志
+          vercel-args: '--prod --confirm --scope=${{ secrets.VERCEL_ORG_ID }}'
+          vercel-version: 28.16.11
