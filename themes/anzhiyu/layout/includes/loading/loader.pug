@@ -1,0 +1,14 @@
+//- loader.pug
+div.loading-container(onclick="this.classList.add('loaded')")
+    div.loader
+      span <
+      span YouyuSpace 
+      span />
+
+
+script.
+  window.addEventListener('load', () => {
+    setTimeout(() => {
+      document.querySelector('.loading-container').classList.add('loaded')
+    }, 3000)
+  })
