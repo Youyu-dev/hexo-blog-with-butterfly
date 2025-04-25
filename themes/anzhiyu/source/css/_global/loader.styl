@@ -45,14 +45,14 @@
   letter-spacing: -1em;
   overflow: hidden;
   animation: 
-    reveal 3000ms cubic-bezier(0.645, 0.045, 0.355, 1) infinite alternate;
+    reveal 3000ms cubic-bezier(0.645, 0.045, 0.355, 1) 1 forwards;
     colorPulse 1s ease infinite;
 }
 
 /* 加载完成后的动画调整 */
 .loading-container.loaded .loader span:nth-child(2) {
   animation: 
-    reveal 1.5s cubic-bezier(0.645, 0.045, 0.355, 1) forwards;
+    reveal 1.5s cubic-bezier(0.645, 0.045, 0.355, 1) 1 forwards;
 }
 
 @keyframes colorPulse {
