@@ -1085,7 +1085,7 @@ home_top:
       class: red
       icon: anzhiyu-icon-fire
     - name: 网址导航
-      path: /tools/site/index.md
+      path: /tools/site
       shadow: var(--anzhiyu-shadow-green)
       class: green
       icon: anzhiyu-icon-book
